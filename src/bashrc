@@ -1,0 +1,19 @@
+# Inline Studio RunPod shell
+case $- in
+  *i*) ;;
+  *) return ;;
+esac
+
+export POD_RUNTIME_DIR="${POD_RUNTIME_DIR:-/opt/pod-runtime}"
+export VENV="${VENV:-/opt/venv}"
+export PATH="$VENV/bin:$POD_RUNTIME_DIR/bin:/workspace:$PATH"
+
+[[ -f /root/.secrets/env.current ]] && source /root/.secrets/env.current
+[[ -f /root/.bash_functions ]] && source /root/.bash_functions
+
+alias ll='ls -alF'
+alias inline-health='curl -fsS http://127.0.0.1:${INLINE_PORT:-8848}/v1/health | jq .'
+alias inline-log='tail -F ${INLINE_LOG_DIR:-/workspace/inline-studio/logs}/startup.log'
+alias inline-models='du -h --max-depth=2 ${INLINE_MODELS_DIR:-/workspace/inline-studio/models} 2>/dev/null | sort -h'
+
+cd /workspace

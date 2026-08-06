@@ -1,0 +1,25 @@
+# Load the broader pod-runtime helper library into the current shell on demand.
+pod_runtime_load() {
+  export COMFY_HOME="${INLINE_STATE_ROOT:-/workspace/inline-studio}"
+  export COMFY_LOGS="${INLINE_LOG_DIR:-/workspace/inline-studio/logs}"
+  export MODELS_DIR="${INLINE_MODELS_DIR:-/workspace/inline-studio/models}"
+  export PY="${PY:-/opt/venv/bin/python}"
+  export PIP="${PIP:-/opt/venv/bin/pip}"
+  export PY_BIN="$PY"
+  export PIP_BIN="$PIP"
+
+  # shellcheck source=/dev/null
+  source "${POD_RUNTIME_DIR:-/opt/pod-runtime}/helpers_core.sh"
+  if [[ -f "${POD_RUNTIME_DIR:-/opt/pod-runtime}/helpers_hf_manifest.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${POD_RUNTIME_DIR:-/opt/pod-runtime}/helpers_hf_manifest.sh"
+  fi
+
+  echo "pod-runtime helpers loaded."
+}
+
+inline-restart-note() {
+  cat <<'NOTE'
+Inline Studio is PID 1 in this container. To restart it cleanly, restart the pod/container from the provider UI.
+NOTE
+}

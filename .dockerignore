@@ -1,0 +1,9 @@
+.git
+.github
+*.log
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+dist-web/
+workspace/
