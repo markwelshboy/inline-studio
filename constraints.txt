@@ -6,6 +6,9 @@
 torch==2.11.0+cu128
 torchvision==0.26.0+cu128
 torchaudio==2.11.0+cu128
+# Keep TorchAO on the matching PyTorch cu128 build. The newer PyPI 0.18.0
+# binary links against libcudart.so.13 and is incompatible with this CUDA 12.8 image.
+torchao==0.17.0+cu128
 
 # Inline Studio v1.2.63 requires diffusers 0.39 for Krea 2.
 diffusers==0.39.0
