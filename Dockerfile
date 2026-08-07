@@ -47,10 +47,10 @@ RUN --mount=type=cache,target=/root/.npm \
 # -----------------------------------------------------------------------------
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION} AS python-build
 
-ARG TORCH_INDEX=https://download.pytorch.org/whl/nightly/cu128
-ARG TORCH_VER=2.12.0.dev20260308+cu128
-ARG TORCHVISION_VER=0.26.0.dev20260308+cu128
-ARG TORCHAUDIO_VER=2.11.0.dev20260308+cu128
+ARG TORCH_INDEX=https://download.pytorch.org/whl/cu128
+ARG TORCH_VER=2.11.0+cu128
+ARG TORCHVISION_VER=0.26.0+cu128
+ARG TORCHAUDIO_VER=2.11.0+cu128
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -79,8 +79,8 @@ ENV PIP_CONSTRAINT=/opt/constraints.txt \
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade "pip<25.2" "setuptools>=66.1,<82" "wheel>=0.38"
 
-# Install the known-good CUDA/Torch stack first. The global constraints keep all
-# later dependency resolution in the same CUDA world.
+# Install the stable, matched CUDA/Torch stack first. The global constraints keep
+# all later dependency resolution in the same CUDA world.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install \
       --index-url "${TORCH_INDEX}" \
