@@ -1,11 +1,11 @@
 # Keep every pip invocation in the same CUDA/Python dependency world.
---index-url https://download.pytorch.org/whl/nightly/cu128
+--index-url https://download.pytorch.org/whl/cu128
 --extra-index-url https://pypi.org/simple
 
-# Known-good CUDA 12.8 stack inherited from the existing pod images.
-torch==2.12.0.dev20260308+cu128
-torchvision==0.26.0.dev20260308+cu128
-torchaudio==2.11.0.dev20260308+cu128
+# Stable CUDA 12.8 stack. PyTorch publishes this trio as a matched release set.
+torch==2.11.0+cu128
+torchvision==0.26.0+cu128
+torchaudio==2.11.0+cu128
 
 # Inline Studio v1.2.63 requires diffusers 0.39 for Krea 2.
 diffusers==0.39.0
