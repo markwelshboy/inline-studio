@@ -6,13 +6,14 @@ usage() {
 Usage:
   ./build_inline-studio.sh [options]
 
-Build/push:
-  --no-push                 Build locally instead of pushing
-  --load                    Load into the local Docker engine (implies --no-push)
+Build/output:
+  --builder <name>           Buildx builder; default: buildkit-scratch
+  --no-push                 Build/cache only; do not push or load into Docker
+  --load                    Load into local Docker instead of pushing
   --platform <platforms>    Default: linux/amd64
   --no-cache                Disable build cache
-  --prune                   Prune stopped containers and dangling images first
-  --prune-hard              Also remove BuildKit cache
+  --prune                   Prune stopped containers and dangling Docker images
+  --prune-hard              Aggressively prune selected Buildx builder cache
 
 Tagging:
   --image <repo/name>       Default: markwelshboy/inline-studio
@@ -32,7 +33,8 @@ Other:
 Examples:
   ./build_inline-studio.sh
   ./build_inline-studio.sh --tag v1.2.63
-  ./build_inline-studio.sh --load --no-push
+  ./build_inline-studio.sh --no-push
+  ./build_inline-studio.sh --load --tag test
   ./build_inline-studio.sh --inline-ref main --no-cache
   ./build_inline-studio.sh --parallel
 HELP
@@ -46,6 +48,7 @@ TAG=latest
 IMAGE_VERSION=1.0.0
 DOCKERFILE=Dockerfile
 PLATFORM=linux/amd64
+BUILDER="${BUILDX_BUILDER:-buildkit-scratch}"
 INLINE_REF=v1.2.63
 POD_RUNTIME_REF=main
 PUSH=true
@@ -58,6 +61,7 @@ EXTRA_BUILD_ARGS=()
 
 while (($#)); do
   case "$1" in
+    --builder) [[ -n "${2:-}" ]] || die '--builder requires a value'; BUILDER="$2"; shift 2 ;;
     --no-push) PUSH=false; shift ;;
     --load) LOAD=true; PUSH=false; shift ;;
     --platform) [[ -n "${2:-}" ]] || die '--platform requires a value'; PLATFORM="$2"; shift 2 ;;
@@ -78,27 +82,20 @@ while (($#)); do
 done
 
 have docker || die 'docker is not installed'
+docker info >/dev/null 2>&1 || die 'Docker is not accessible as the current user'
+docker buildx version >/dev/null 2>&1 || die 'docker buildx is unavailable'
+docker buildx inspect "${BUILDER}" >/dev/null 2>&1 || die "Buildx builder '${BUILDER}' not found or unavailable"
 [[ -f "$DOCKERFILE" ]] || die "Dockerfile not found: $DOCKERFILE"
 
-DOCKER=(docker)
-if ! docker info >/dev/null 2>&1; then
-  have sudo || die 'docker requires elevated access and sudo is unavailable'
-  sudo docker info >/dev/null 2>&1 || die 'cannot access the Docker daemon'
-  DOCKER=(sudo docker)
+if $LOAD && [[ "$PLATFORM" == *,* ]]; then
+  die '--load supports a single platform only'
 fi
-
-"${DOCKER[@]}" buildx version >/dev/null 2>&1 || die 'docker buildx is unavailable'
 
 if $PRUNE_HARD; then
-  "${DOCKER[@]}" system prune -af || true
-  "${DOCKER[@]}" builder prune -af || true
+  docker buildx prune --builder "${BUILDER}" --all --force || true
 elif $PRUNE; then
-  "${DOCKER[@]}" container prune -f || true
-  "${DOCKER[@]}" image prune -f || true
-fi
-
-if ! "${DOCKER[@]}" buildx inspect >/dev/null 2>&1; then
-  "${DOCKER[@]}" buildx create --use --name inline-studio-builder >/dev/null
+  docker container prune -f || true
+  docker image prune -f || true
 fi
 
 BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -109,7 +106,7 @@ else
 fi
 
 ARGS=(
-  buildx build
+  --builder "${BUILDER}"
   --target final
   --platform "$PLATFORM"
   --file "$DOCKERFILE"
@@ -123,13 +120,9 @@ ARGS=(
 )
 
 $NO_CACHE && ARGS+=(--no-cache)
-
 if $PUSH; then
   ARGS+=(--push)
-else
-  # A single-platform local build can always be loaded. For a multi-platform
-  # local build, BuildKit must export elsewhere, so fail clearly.
-  [[ "$PLATFORM" != *,* ]] || die '--no-push with multiple platforms is unsupported; use --push'
+elif $LOAD; then
   ARGS+=(--load)
 fi
 
@@ -139,6 +132,7 @@ ARGS+=(.)
 cat <<SUMMARY
 == Inline Studio image build ==
 Image            : ${IMAGE}:${TAG}
+Builder          : ${BUILDER}
 Platform         : ${PLATFORM}
 Push             : ${PUSH}
 Load             : ${LOAD}
@@ -151,10 +145,24 @@ Build date       : ${BUILD_DATE}
 Dockerfile       : ${DOCKERFILE}
 SUMMARY
 
-"${DOCKER[@]}" "${ARGS[@]}"
+echo
+echo '== Storage before =='
+docker system df || true
+docker buildx du --builder "${BUILDER}" || true
+df -h /var /srv/buildkit 2>/dev/null || true
+
+docker buildx build "${ARGS[@]}"
 
 if $PUSH; then
   printf '\nPushed: %s:%s\n' "$IMAGE" "$TAG"
+elif $LOAD; then
+  printf '\nBuilt and loaded locally: %s:%s\n' "$IMAGE" "$TAG"
 else
-  printf '\nBuilt locally: %s:%s\n' "$IMAGE" "$TAG"
+  printf '\nBuilt successfully; result was not pushed or loaded and remains in BuildKit cache.\n'
 fi
+
+echo
+echo '== Storage after =='
+docker system df || true
+docker buildx du --builder "${BUILDER}" || true
+df -h /var /srv/buildkit 2>/dev/null || true
