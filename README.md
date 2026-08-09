@@ -23,7 +23,7 @@ chmod +x build_inline-studio.sh
 ./build_inline-studio.sh
 ```
 
-The default image is:
+The build helper uses the `buildkit-scratch` Buildx builder by default and pushes the resulting image unless told otherwise. The default image is:
 
 ```text
 markwelshboy/inline-studio:latest
@@ -32,8 +32,11 @@ markwelshboy/inline-studio:latest
 Useful variations:
 
 ```bash
-# Build and load locally instead of pushing
-./build_inline-studio.sh --load
+# Build/cache only; do not push or load into Docker
+./build_inline-studio.sh --no-push
+
+# Explicitly load a test image into the local Docker engine
+./build_inline-studio.sh --load --tag test
 
 # Publish a versioned tag
 ./build_inline-studio.sh --tag v1.2.63 --image-version 1.2.63
@@ -45,7 +48,7 @@ Useful variations:
 ./build_inline-studio.sh --parallel
 ```
 
-The script pushes by default and uses `docker buildx`. Run `./build_inline-studio.sh --help` for all options.
+Override the builder with `--builder NAME` or `BUILDX_BUILDER` when required. Run `./build_inline-studio.sh --help` for all options.
 
 ## RunPod template
 
